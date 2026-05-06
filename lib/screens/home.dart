@@ -68,16 +68,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
-          // IconButton(
-          //   onPressed: () {},
-          //   icon: const Icon(Icons.camera_alt_outlined),
-          // ),
           IconButton(
             onPressed: () => Navigator.pop(context),
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar Sesión',
           ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
+            icon: const Icon(Icons.more_vert),
+          ),
         ],
         backgroundColor: Colors.white,
         elevation: 0,
