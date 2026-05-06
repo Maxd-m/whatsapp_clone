@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1062885319811",
+    "project_id": "dmovynub26",
+    "storage_bucket": "dmovynub26.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1062885319811:android:cd984b90668173bba2e7b6",
+        "android_client_info": {
+          "package_name": "com.example.dmovynub26"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaoBY3vQCwXTEgf9_sG3WUPkCAV3ZLPZY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1062885319811:android:1b7c2238b64b1c36a2e7b6",
+        "android_client_info": {
+          "package_name": "com.example.whatsapp_clone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaoBY3vQCwXTEgf9_sG3WUPkCAV3ZLPZY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
