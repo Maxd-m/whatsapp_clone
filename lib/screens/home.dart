@@ -14,6 +14,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final ChatService _chatService = ChatService();
   final String currentUserId =
       'uid_yo'; // TODO: Obtener de FirebaseAuth.instance.currentUser!.uid
+  List<String> _myContactIds = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Escuchar cambios en los contactos
+    _chatService.getContactIdsStream(currentUserId).listen((contacts) {
+      setState(() {
+        _myContactIds = contacts;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
           // Tu barra de búsqueda aquí... (Omitida por brevedad)
           Expanded(
             child: StreamBuilder<List<Chat>>(
-              stream: _chatService.getChatsStream(currentUserId),
+              stream: _chatService.getFilteredChatsStream(
+                currentUserId,
+                _myContactIds,
+              ),
               builder: (context, snapshot) {
                 if (snapshot.hasError)
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -68,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     String displayName = isGroup
                         ? chat.groupDetails?.name ?? 'Grupo'
-                        : 'Contacto ${chat.participants.firstWhere((p) => p != currentUserId, orElse: () => 'Desconocido')}';
+                        : '${chat.participants.firstWhere((p) => p != currentUserId, orElse: () => 'Desconocido')}';
 
                     return ListTile(
                       leading: CircleAvatar(

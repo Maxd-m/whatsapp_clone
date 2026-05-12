@@ -62,4 +62,37 @@ class ChatService {
       },
     });
   }
+
+  // 4. Obtener la lista de contactos del usuario
+  Stream<List<String>> getContactIdsStream(String currentUserId) {
+    return _db.collection('users').doc(currentUserId).snapshots().map((doc) {
+      return List<String>.from(doc.data()?['contacts'] ?? []);
+    });
+  }
+
+  // 5. Modificar u obtener un stream filtrado
+  Stream<List<Chat>> getFilteredChatsStream(
+    String currentUserId,
+    List<String> contactIds,
+  ) {
+    return getChatsStream(currentUserId).map((chats) {
+      return chats.where((chat) {
+        // Si es un grupo, generalmente se muestra siempre
+        if (chat.type == 'group') return true;
+
+        // Si es chat directo, verificar si el otro participante es contacto
+        String otherParticipant = chat.participants.firstWhere(
+          (p) => p != currentUserId,
+          orElse: () => '',
+        );
+        return contactIds.contains(otherParticipant);
+      }).toList();
+    });
+  }
+
+  Stream<UserProfile> getUserProfileStream(String uid) {
+    return _db.collection('users').doc(uid).snapshots().map((doc) {
+      return UserProfile.fromDocument(doc);
+    });
+  }
 }

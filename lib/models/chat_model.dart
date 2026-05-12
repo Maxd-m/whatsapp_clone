@@ -118,3 +118,45 @@ class Message {
     );
   }
 }
+
+class UserModel {
+  final String uid;
+  final List<String> contacts;
+
+  UserModel({required this.uid, required this.contacts});
+
+  factory UserModel.fromDocument(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>;
+    return UserModel(
+      uid: doc.id,
+      contacts: List<String>.from(map['contacts'] ?? []),
+    );
+  }
+}
+
+class UserProfile {
+  final String uid;
+  final String displayName;
+  final String email;
+  final String phone;
+  final String photoUrl;
+
+  UserProfile({
+    required this.uid,
+    required this.displayName,
+    required this.email,
+    required this.phone,
+    required this.photoUrl,
+  });
+
+  factory UserProfile.fromDocument(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>? ?? {};
+    return UserProfile(
+      uid: doc.id,
+      displayName: map['displayName'] ?? 'Usuario',
+      email: map['email'] ?? '',
+      phone: map['phone'] ?? '',
+      photoUrl: map['photoUrl'] ?? 'https://via.placeholder.com/150',
+    );
+  }
+}
