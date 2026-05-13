@@ -90,6 +90,32 @@ class AuthService {
     }
   }
 
+  // Nuevo método: Iniciar sesión con Teléfono y Contraseña
+  Future<void> signInWithPhoneAndPassword(String phone, String password) async {
+    try {
+      // 1. Buscamos el documento del usuario que tenga ese número de teléfono
+      final query = await _db
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        throw Exception("No existe una cuenta vinculada a este número.");
+      }
+
+      // 2. Obtenemos el email de ese documento
+      String email = query.docs.first.get('email');
+
+      // 3. Iniciamos sesión con el email y contraseña
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Error al iniciar sesión.");
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   // 4. Iniciar Sesión
   Future<void> signIn(String email, String password) async {
     try {

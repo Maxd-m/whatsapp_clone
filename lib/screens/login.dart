@@ -10,7 +10,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // Controladores para obtener el texto de los campos
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
@@ -18,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   void _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Por favor, llena todos los campos")),
       );
@@ -27,8 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _authService.signIn(
-        _emailController.text.trim(),
+      await _authService.signInWithPhoneAndPassword(
+        _phoneController.text.trim(),
         _passwordController.text.trim(),
       );
       // NOTA: No necesitamos navegar. El StreamBuilder en main.dart lo hará solo.
@@ -57,13 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Campo de Email
+              // Campo de Teléfono
               TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  prefixIcon: Icon(Icons.email),
+                  labelText: 'Número de Teléfono (+52...)',
+                  prefixIcon: Icon(Icons.phone),
                   border: OutlineInputBorder(),
                 ),
               ),
