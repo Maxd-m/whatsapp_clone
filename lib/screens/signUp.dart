@@ -1,4 +1,3 @@
-// Archivo: lib/screens/sign_up_screen.dart (o la ruta donde lo tengas)
 import 'package:flutter/material.dart';
 import '../firebase/auth_service.dart';
 
@@ -12,67 +11,60 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _nameController =
+      TextEditingController(); // NUEVO
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController =
-      TextEditingController(); // Añadido
+  final TextEditingController _passwordController = TextEditingController();
 
-  final AuthService _authService = AuthService(); // Instancia del servicio
+  final AuthService _authService = AuthService();
 
   bool _phoneVerified = false;
   bool _isLoading = false;
   String? _verificationId;
 
-  // Función para mostrar mensajes de error o éxito
   void _showMessage(String text) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  // Flujo 1: Enviar SMS
   void _sendSMS() {
     if (_phoneController.text.isEmpty) {
-      _showMessage("Ingresa un número de teléfono válido (ej. +52...)");
+      _showMessage("Ingresa un número válido");
       return;
     }
-
     setState(() => _isLoading = true);
-
     _authService.sendPhoneVerification(
       phoneNumber: _phoneController.text.trim(),
-      onCodeSent: (verificationId) {
+      onCodeSent: (id) {
         setState(() {
           _isLoading = false;
-          _verificationId = verificationId;
+          _verificationId = id;
         });
-        _showOTPDialog(); // Muestra el popup para el código SMS
+        _showOTPDialog();
       },
-      onError: (error) {
+      onError: (err) {
         setState(() => _isLoading = false);
-        _showMessage(error);
+        _showMessage(err);
       },
     );
   }
 
-  // Flujo 2: Cuadro de diálogo para ingresar el código SMS
   void _showOTPDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Ingresa el código SMS"),
+        title: const Text("Código SMS"),
         content: TextField(
           controller: _otpController,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "Código de 6 dígitos"),
+          decoration: const InputDecoration(labelText: "6 dígitos"),
         ),
         actions: [
           TextButton(
             onPressed: () async {
-              if (_otpController.text.isEmpty || _verificationId == null)
-                return;
-
-              Navigator.pop(context); // Cierra el diálogo
+              Navigator.pop(context);
               setState(() => _isLoading = true);
-
               try {
                 await _authService.verifyOTP(
                   verificationId: _verificationId!,
@@ -82,7 +74,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   _phoneVerified = true;
                   _isLoading = false;
                 });
-                _showMessage("Teléfono verificado exitosamente");
               } catch (e) {
                 setState(() => _isLoading = false);
                 _showMessage(e.toString());
@@ -95,25 +86,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Flujo 3: Registrar Email, vincularlo y enviar verificación
-  void _registerEmail() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showMessage("Completa tu correo y contraseña");
+  void _registerUser() async {
+    // Validamos que todos los campos estén llenos
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showMessage("Por favor, completa todos los campos");
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
       await _authService.linkEmailAndSendVerification(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
+        displayName: _nameController.text.trim(), // Enviamos el nombre
       );
       setState(() => _isLoading = false);
-      _showMessage("¡Registro exitoso! Revisa tu bandeja de entrada.");
-
-      // Aquí puedes redirigir al usuario a la pantalla de inicio de sesión
-      // Navigator.pushNamed(context, '/login');
+      _showMessage("¡Éxito! Verifica tu email antes de iniciar sesión.");
       Navigator.pop(context);
     } catch (e) {
       setState(() => _isLoading = false);
@@ -124,79 +114,67 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(
-                Icons.person_add_rounded,
-                size: 100,
-                color: Colors.green,
+      appBar: AppBar(title: const Text("Registro")),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.person_add, size: 80, color: Colors.green),
+            const SizedBox(height: 30),
+            if (!_phoneVerified) ...[
+              // PASO 1: TELÉFONO
+              TextField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: "Teléfono (+52...)",
+                  border: OutlineInputBorder(),
+                ),
               ),
-              const SizedBox(height: 48),
-
-              if (_phoneVerified) ...[
-                const Text(
-                  'Configura tu correo y contraseña',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(height: 16),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _sendSMS,
+                      child: const Text("Enviar SMS"),
+                    ),
+            ] else ...[
+              // PASO 2: DATOS PERSONALES
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: "Nombre de Usuario",
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo Electrónico',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: "Correo Electrónico",
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Contraseña",
+                  prefixIcon: Icon(Icons.lock),
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 16),
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
-                        onPressed: _registerEmail,
-                        child: const Text('Registrarse y Verificar Email'),
-                      ),
-              ] else ...[
-                const Text(
-                  'Verifica tu número de teléfono',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Número (ej. +525512345678)',
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
-                        onPressed: _sendSMS,
-                        child: const Text('Enviar SMS'),
-                      ),
-              ],
+              ),
+              const SizedBox(height: 20),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _registerUser,
+                      child: const Text("Finalizar Registro"),
+                    ),
             ],
-          ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/chat_model.dart';
+import '../firebase/auth_service.dart';
 import '../firebase/chat_service.dart';
 import 'chat_screen.dart'; // Importa la pantalla que crearemos en el paso 4
 
@@ -12,19 +14,24 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ChatService _chatService = ChatService();
-  final String currentUserId =
-      'uid_yo'; // TODO: Obtener de FirebaseAuth.instance.currentUser!.uid
+  final AuthService _authService = AuthService();
+  late String currentUserId;
   List<String> _myContactIds = [];
 
   @override
   void initState() {
     super.initState();
-    // Escuchar cambios en los contactos
-    _chatService.getContactIdsStream(currentUserId).listen((contacts) {
-      setState(() {
-        _myContactIds = contacts;
+    // Obtenemos el ID de forma segura
+    currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (currentUserId.isNotEmpty) {
+      // Escuchar cambios en los contactos
+      _chatService.getContactIdsStream(currentUserId).listen((contacts) {
+        setState(() {
+          _myContactIds = contacts;
+        });
       });
-    });
+    }
   }
 
   @override
@@ -39,10 +46,20 @@ class _HomeScreenState extends State<HomeScreen> {
             fontSize: 24,
           ),
         ),
+        automaticallyImplyLeading: false,
         actions: [
           // Tus íconos
           IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              await _authService.signOut();
+              if (mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              }
+            },
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar Sesión',
           ),

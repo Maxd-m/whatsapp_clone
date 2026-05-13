@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/chat_model.dart';
 import '../firebase/chat_service.dart';
@@ -11,8 +12,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ChatService _chatService = ChatService();
-  // TODO: Reemplazar por el ID real de Firebase Auth cuando esté implementado
-  final String currentUserId = 'uid_yo';
+  late String currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicializamos de forma segura
+    currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {

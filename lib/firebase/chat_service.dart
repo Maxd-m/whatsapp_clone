@@ -65,6 +65,9 @@ class ChatService {
 
   // 4. Obtener la lista de contactos del usuario
   Stream<List<String>> getContactIdsStream(String currentUserId) {
+    if (currentUserId.isEmpty) {
+      return Stream.value([]);
+    }
     return _db.collection('users').doc(currentUserId).snapshots().map((doc) {
       return List<String>.from(doc.data()?['contacts'] ?? []);
     });
@@ -91,6 +94,9 @@ class ChatService {
   }
 
   Stream<UserProfile> getUserProfileStream(String uid) {
+    if (uid.isEmpty) {
+      return const Stream.empty();
+    }
     return _db.collection('users').doc(uid).snapshots().map((doc) {
       return UserProfile.fromDocument(doc);
     });
