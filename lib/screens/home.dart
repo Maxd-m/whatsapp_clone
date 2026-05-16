@@ -18,6 +18,93 @@ class _HomeScreenState extends State<HomeScreen> {
   late String currentUserId;
   List<String> _myContactIds = [];
 
+  void _showAddContactDialog(BuildContext context) {
+    final TextEditingController searchController = TextEditingController();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('Añadir nuevo contacto'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Ingresa el correo electrónico o número de teléfono:',
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'ej: test@mail.com o +52...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      prefixIcon: const Icon(Icons.search),
+                    ),
+                  ),
+                  if (isLoading) ...[
+                    const SizedBox(height: 15),
+                    const CircularProgressIndicator(color: Color(0xFF25D366)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final query = searchController.text.trim();
+                          if (query.isEmpty) return;
+
+                          setStateDialog(() => isLoading = true);
+
+                          // Llamamos a nuestro nuevo método del servicio
+                          final resultMessage = await _chatService
+                              .addContactByEmailOrPhone(currentUserId, query);
+
+                          setStateDialog(() => isLoading = false);
+
+                          if (context.mounted) {
+                            Navigator.pop(context); // Cierra el diálogo
+                            // Mostramos el resultado con un SnackBar
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(resultMessage),
+                                backgroundColor:
+                                    resultMessage.contains('exitosamente')
+                                    ? const Color(0xFF25D366)
+                                    : Colors.redAccent,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                  ),
+                  child: const Text(
+                    'Añadir',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -144,9 +231,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => _showAddContactDialog(context),
         backgroundColor: const Color(0xFF25D366),
-        child: const Icon(Icons.chat, color: Colors.white),
+        child: const Icon(Icons.person_add, color: Colors.white),
       ),
     );
   }

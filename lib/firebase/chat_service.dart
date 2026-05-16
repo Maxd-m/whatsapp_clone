@@ -93,6 +93,86 @@ class ChatService {
     });
   }
 
+  // 6. Añadir un contacto por email o teléfono y crear chat
+  Future<String> addContactByEmailOrPhone(
+    String currentUserId,
+    String query,
+  ) async {
+    try {
+      // Intentamos buscar primero por email
+      var emailQuery = await _db
+          .collection('users')
+          .where('email', isEqualTo: query)
+          .get();
+      // Y también por teléfono
+      var phoneQuery = await _db
+          .collection('users')
+          .where('phone', isEqualTo: query)
+          .get();
+
+      String? newContactId;
+
+      if (emailQuery.docs.isNotEmpty) {
+        newContactId = emailQuery.docs.first.id;
+      } else if (phoneQuery.docs.isNotEmpty) {
+        newContactId = phoneQuery.docs.first.id;
+      }
+
+      if (newContactId != null) {
+        // Evitar que el usuario se agregue a sí mismo
+        if (newContactId == currentUserId) {
+          return 'No puedes agregarte a ti mismo.';
+        }
+
+        // 1. Agregar el UID encontrado al arreglo 'contacts'
+        await _db.collection('users').doc(currentUserId).update({
+          'contacts': FieldValue.arrayUnion([newContactId]),
+        });
+
+        // 2. Crear el chat vacío en la colección 'chats' si no existe
+        await _createDirectChatIfNotExists(currentUserId, newContactId);
+
+        return 'Contacto agregado y chat creado exitosamente.';
+      } else {
+        return 'Usuario no encontrado.';
+      }
+    } catch (e) {
+      return 'Error al buscar el usuario: $e';
+    }
+  }
+
+  // MÉTODO AUXILIAR: Verifica si el chat ya existe y si no, lo crea
+  Future<void> _createDirectChatIfNotExists(String uid1, String uid2) async {
+    // Buscamos los chats donde el usuario actual ya sea participante
+    final querySnapshot = await _db
+        .collection('chats')
+        .where('participants', arrayContains: uid1)
+        .where('type', isEqualTo: 'direct')
+        .get();
+
+    bool chatExists = false;
+
+    // Iteramos para ver si en alguno de esos chats también está el uid2
+    for (var doc in querySnapshot.docs) {
+      List<dynamic> participants = doc.data()['participants'] ?? [];
+      if (participants.contains(uid2)) {
+        chatExists = true;
+        break;
+      }
+    }
+
+    // Si el chat no existe, lo creamos usando el formato de tu base de datos
+    if (!chatExists) {
+      await _db.collection('chats').add({
+        'type': 'direct',
+        'participants': [uid1, uid2],
+        'updatedAt': FieldValue.serverTimestamp(),
+        // No agregamos el campo 'lastMessage' aún porque es un chat vacío.
+        // Tu modelo (chat_model.dart) ya está preparado para manejar 'lastMessage' como null.
+      });
+    }
+  }
+
   Stream<UserProfile> getUserProfileStream(String uid) {
     if (uid.isEmpty) {
       return const Stream.empty();
