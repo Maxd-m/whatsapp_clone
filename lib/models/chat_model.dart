@@ -140,6 +140,7 @@ class UserProfile {
   final String email;
   final String phone;
   final String photoUrl;
+  final bool createGroup;
 
   UserProfile({
     required this.uid,
@@ -147,6 +148,7 @@ class UserProfile {
     required this.email,
     required this.phone,
     required this.photoUrl,
+    this.createGroup = false,
   });
 
   factory UserProfile.fromDocument(DocumentSnapshot doc) {
@@ -157,6 +159,7 @@ class UserProfile {
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       photoUrl: map['photoUrl'] ?? 'https://via.placeholder.com/150',
+      createGroup: map['createGroup'] ?? false,
     );
   }
 }

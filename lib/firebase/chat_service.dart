@@ -141,6 +141,57 @@ class ChatService {
     }
   }
 
+  // 7. Crear un chat grupal
+  Future<void> createGroupChat(
+    String currentUserId,
+    String groupName,
+    List<String> memberIds,
+  ) async {
+    // Asegurarnos de que el creador está en la lista de participantes y que no haya duplicados
+    List<String> allParticipants = [
+      currentUserId,
+      ...memberIds,
+    ].toSet().toList();
+    // Al crear el grupo, inicializamos al creador como el único participante y administrador.
+    await _db.collection('chats').add({
+      'type': 'group',
+      'participants': allParticipants,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'groupDetails': {
+        'name': groupName,
+        'photoUrl':
+            'https://picsum.photos/seed/${groupName.replaceAll(' ', '')}/200/200', // URL generada para foto aleatoria
+        'admins': [currentUserId],
+        'hidePhoneNumbers': true,
+      },
+      // Nota: lastMessage no se agrega hasta que alguien escriba
+    });
+  }
+
+  // 8. Buscar usuario por email o teléfono y devolver su perfil ---
+  Future<UserProfile?> searchUserByEmailOrPhone(String query) async {
+    try {
+      var emailQuery = await _db
+          .collection('users')
+          .where('email', isEqualTo: query)
+          .get();
+      var phoneQuery = await _db
+          .collection('users')
+          .where('phone', isEqualTo: query)
+          .get();
+
+      if (emailQuery.docs.isNotEmpty) {
+        return UserProfile.fromDocument(emailQuery.docs.first);
+      } else if (phoneQuery.docs.isNotEmpty) {
+        return UserProfile.fromDocument(phoneQuery.docs.first);
+      }
+      return null; // Si no encuentra nada
+    } catch (e) {
+      print('Error al buscar usuario: $e');
+      return null;
+    }
+  }
+
   // MÉTODO AUXILIAR: Verifica si el chat ya existe y si no, lo crea
   Future<void> _createDirectChatIfNotExists(String uid1, String uid2) async {
     // Buscamos los chats donde el usuario actual ya sea participante
