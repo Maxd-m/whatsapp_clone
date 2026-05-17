@@ -102,21 +102,68 @@ void startGame() {
                 int highScore = data.containsKey('highScore') ? data['highScore'] : 0;
                 String holderId = data.containsKey('highScoreHolderId') ? data['highScoreHolderId'] : 'Nadie';
 
-                String displayHolder = holderId == widget.currentUserId ? 'Tú' : 'Otro participante';
-                if (highScore == 0) displayHolder = 'Nadie';
+                //String displayHolder = holderId == widget.currentUserId ? 'Tú' : 'Otro participante';
+                //if (highScore == 0) displayHolder = 'Nadie';
 
-                return Align(
-                  alignment: const Alignment(0, -0.8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Récord del Chat: $highScore',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Por: $displayHolder',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                return  Align(
+                alignment: const Alignment(0, -0.8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (highScore == 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Column(
+                          children: [
+                            Text('RÉCORD DEL CHAT: 0', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                            SizedBox(height: 2),
+                            Text('Por: Nadie', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          ],
+                        ),
+                      )
+                    else
+                      FutureBuilder<String>(
+                        future: _chatService.getUserNameById(holderId), 
+                        builder: (context, snapshot) {
+                          String displayName = 'Cargando...';
+
+                          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                            displayName = snapshot.data!;
+                          }
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'RÉCORD DEL CHAT: $highScore',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Por: $displayName', 
+                                  style: TextStyle(
+                                    color: Colors.greenAccent[100],
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

@@ -41,12 +41,14 @@ dependencies:
 
   supabase_flutter: ^2.10.6 
   image_picker: ^1.2.2 
-  file_picker: ^11.0.2
+  file_picker: ^10.3.8
   video_player: ^2.11.1
   url_launcher: ^6.3.2
 
 
   flutter_dotenv: ^5.1.0
+
+  zego_uikit_prebuilt_call: ^4.24.1
 
 dev_dependencies:
   flutter_test:

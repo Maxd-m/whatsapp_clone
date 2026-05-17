@@ -9,6 +9,7 @@ import '../utils/supabase_storage_service.dart';
 import 'ball_game_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'video_call_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -101,7 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendDocument() async {
-    FilePickerResult? result = await FilePicker.pickFiles(
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.any,
     );
 
@@ -208,8 +209,27 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Text(widget.chatTitle),
         backgroundColor: const Color(0xFF128C7E),
-        foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.video_call),
+            tooltip: 'Iniciar Videollamada',
+            onPressed: () async {
+              String realName = await _chatService.getUserNameById(widget.currentUserId);
+
+              if (!context.mounted) return;
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VideoCallScreen(
+                    chatId: widget.chatId, 
+                    currentUserId: widget.currentUserId,
+                    currentUserName: realName,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.sports_esports), 
             tooltip: 'Minijuego',

@@ -49,9 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (currentUserId.isNotEmpty) {
       // Escuchar cambios en los contactos
       _chatService.getContactIdsStream(currentUserId).listen((contacts) {
-        setState(() {
-          _myContactIds = contacts;
-        });
+        if (mounted) {
+          setState(() {
+            _myContactIds = contacts;
+          });
+        }
       });
     }
   }
@@ -120,41 +122,107 @@ class _HomeScreenState extends State<HomeScreen> {
                     final chat = chats[index];
                     final isGroup = chat.type == 'group';
 
-                    String displayName = isGroup
-                        ? chat.groupDetails?.name ?? 'Grupo'
-                        : '${chat.participants.firstWhere((p) => p != currentUserId, orElse: () => 'Desconocido')}';
+                    if (isGroup) {
+                      String displayName = chat.groupDetails?.name ?? 'Grupo';
 
-                    return ListTile(
-                      leading: CircleAvatar(),
-                      title: Text(
-                        displayName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: chat.lastMessage != null
-                          ? Text(
-                              chat.lastMessage!.text,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            )
-                          : const Text('Nuevo chat'),
-                      trailing: chat.lastMessage != null
-                          ? Text(
-                              "${chat.lastMessage!.timestamp.hour}:${chat.lastMessage!.timestamp.minute.toString().padLeft(2, '0')}",
-                            )
-                          : null,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              chatId: chat.id,
-                              chatTitle: displayName,
-                              currentUserId: currentUserId,
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.blueGrey,
+                          child: Icon(Icons.group, color: Colors.white),
+                        ),
+                        title: Text(
+                          displayName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: chat.lastMessage != null
+                            ? Text(
+                                chat.lastMessage!.text,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : const Text('Nuevo chat'),
+                        trailing: chat.lastMessage != null
+                            ? Text(
+                                "${chat.lastMessage!.timestamp.hour}:${chat.lastMessage!.timestamp.minute.toString().padLeft(2, '0')}",
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                chatId: chat.id,
+                                chatTitle: displayName,
+                                currentUserId: currentUserId,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
+                          );
+                        },
+                      );
+                    } 
+                    else {
+                      final otherUserId = chat.participants.firstWhere(
+                        (p) => p != currentUserId, 
+                        orElse: () => ''
+                      );
+
+                      return StreamBuilder<UserProfile>(
+                        stream: _chatService.getUserProfileStream(otherUserId),
+                        builder: (context, snapshot) {
+                          String displayName = 'Cargando...';
+                          Widget avatar = const CircleAvatar(
+                            backgroundColor: Colors.grey,
+                            child: Icon(Icons.person, color: Colors.white),
+                          );
+
+                          if (snapshot.hasData) {
+                            final user = snapshot.data!;
+                            
+                            displayName = user.displayName.isNotEmpty 
+                                ? user.displayName 
+                                : 'Desconocido';
+
+                            if (user.photoUrl.isNotEmpty) {
+                              avatar = CircleAvatar(
+                                backgroundImage: NetworkImage(user.photoUrl),
+                              );
+                            }
+                          }
+
+                          return ListTile(
+                            leading: avatar, 
+                            title: Text(
+                              displayName, 
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: chat.lastMessage != null
+                                ? Text(
+                                    chat.lastMessage!.text,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : const Text('Nuevo chat'),
+                            trailing: chat.lastMessage != null
+                                ? Text(
+                                    "${chat.lastMessage!.timestamp.hour}:${chat.lastMessage!.timestamp.minute.toString().padLeft(2, '0')}",
+                                  )
+                                : null,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    chatId: chat.id,
+                                    chatTitle: displayName, 
+                                    currentUserId: currentUserId,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    }
                   },
                 );
               },

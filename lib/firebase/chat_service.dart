@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat_model.dart';
+import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -254,6 +256,53 @@ class ChatService {
       }
     } catch (e) {
       print('Error al actualizar récord: $e');
+    }
+  }
+
+  Future<String> getUserNameById(String userId) async {
+    try {
+      DocumentSnapshot userDoc = await _db.collection('users').doc(userId).get();
+      
+      if (userDoc.exists) {
+        return userDoc.get('displayName') ?? 'Usuario Desconocido';
+      }
+    } catch (e) {
+      print('Error al obtener el nombre de usuario: $e');
+    }
+    return 'Usuario Desconocido'; 
+  }
+
+  Future<void> updateProfile(String uid, String newName, File? newImage) async {
+    try {
+      String? updatedPhotoUrl;
+
+      if (newImage != null) {
+        final supabase = Supabase.instance.client;
+        
+        final fileName = '$uid.jpg'; 
+
+        await supabase.storage.from('chat_media').upload(
+              fileName,
+              newImage,
+              fileOptions: const FileOptions(upsert: true),
+            );
+
+        updatedPhotoUrl = supabase.storage.from('chat_media').getPublicUrl(fileName);
+      }
+
+      Map<String, dynamic> updates = {
+        'displayName': newName.trim(),
+      };
+
+      if (updatedPhotoUrl != null) {
+        updates['photoUrl'] = updatedPhotoUrl;
+      }
+
+      await _db.collection('users').doc(uid).update(updates);
+      
+    } catch (e) {
+      print("Error al actualizar perfil con arquitectura híbrida: $e");
+      throw Exception("No se pudo actualizar el perfil");
     }
   }
 }
