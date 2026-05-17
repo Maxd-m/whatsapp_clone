@@ -232,4 +232,28 @@ class ChatService {
       return UserProfile.fromDocument(doc);
     });
   }
+
+  Stream<DocumentSnapshot> getChatRecordStream(String chatId) {
+    return _db.collection('chats').doc(chatId).snapshots();
+  }
+
+  Future<void> updateGameRecord(String chatId, String userId, int newScore) async {
+    try {
+      DocumentSnapshot chatDoc = await _db.collection('chats').doc(chatId).get();
+      
+      int currentHighScore = 0;
+      if (chatDoc.data() != null && (chatDoc.data() as Map<String, dynamic>).containsKey('highScore')) {
+        currentHighScore = chatDoc['highScore'] ?? 0;
+      }
+
+      if (newScore > currentHighScore) {
+        await _db.collection('chats').doc(chatId).update({
+          'highScore': newScore,
+          'highScoreHolderId': userId, 
+        });
+      }
+    } catch (e) {
+      print('Error al actualizar récord: $e');
+    }
+  }
 }
