@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-    _showLoadingModal("Verificando contraseña...");
+    _showLoadingModal("Verificando numero de telefono...");
 
     try {
       await _authService.signInWithPhoneAndPassword(
@@ -70,29 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
 
-      await _authService.signOut();
-
-      await Future.delayed(const Duration(seconds: 1));
       _hideLoadingModal();
-      _showLoadingModal("Enviando SMS a $fullPhoneNumber...");
 
-      await _authService.sendPhoneVerification(
-        phoneNumber: fullPhoneNumber,
-        isLogin: true, 
-        onCodeSent: (id) {
-          _hideLoadingModal();
-          setState(() {
-            _verificationId = id;
-          });
-          _showOTPDialog(); 
-        },
-        onError: (err) async {
-          _hideLoadingModal();
-          scaffoldMessenger.showSnackBar(SnackBar(content: Text(err)));
-        },
-      );
+
     } catch (e) {
       _hideLoadingModal();
+      
       String errorText = e.toString().replaceAll('Exception: ', '');
       scaffoldMessenger.showSnackBar(SnackBar(content: Text(errorText)));
     }

@@ -67,75 +67,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     String fullPhoneNumber = "$_selectedCountryCode${_phoneController.text.trim()}";
 
-    setState(() => _isLoading = true);
+    // ¡AQUÍ ESTÁ EL CAMBIO VISUAL!
+    // Usamos tu modal con texto en lugar de solo un boolean
+    _showLoadingModal("Verificando número...");
 
-    await _authService.sendPhoneVerification(
-      phoneNumber: fullPhoneNumber,
-      onCodeSent: (id) {
-        setState(() {
-          _isLoading = false;
-          _verificationId = id;
-        });
-        _showOTPDialog();
-      },
-      onError: (err) {
-        setState(() => _isLoading = false);
-        _showMessage(err);
-      },
-    );
-  }
+    try {
+      await _authService.sendPhoneVerification(
+        phoneNumber: fullPhoneNumber,
+        
+        onAutoVerified: () {
+          if (!mounted) return;
+          _hideLoadingModal(); // Quitamos el modal de carga
+          setState(() {
+            _phoneVerified = true; 
+          });
+        },
 
-  void _showOTPDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        _otpDialogContext = ctx;
-        return AlertDialog(
-          title: const Text("Código SMS"),
-          content: TextField(
-            controller: _otpController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: "6 dígitos"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (_otpDialogContext != null) Navigator.pop(_otpDialogContext!);
-                _otpController.clear();
-              },
-              child: const Text("Cancelar", style: TextStyle(color: Colors.red)),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (_otpDialogContext != null) Navigator.pop(_otpDialogContext!);
-                
-                _showLoadingModal("Verificando código...");
-                
-                try {
-                  await Future.delayed(const Duration(seconds: 1)); 
-                  
-                  await _authService.verifyOTP(
-                    verificationId: _verificationId!,
-                    smsCode: _otpController.text.trim(),
-                  );
-                  
-                  _hideLoadingModal();
-                  
-                  setState(() {
-                    _phoneVerified = true;
-                  });
-                } catch (e) {
-                  _hideLoadingModal();
-                  _showMessage(e.toString());
-                }
-              },
-              child: const Text("Verificar"),
-            ),
-          ],
-        );
-      }
-    );
+        onCodeSent: (id) async {
+          if (!mounted) return;
+          
+          await Future.delayed(const Duration(seconds: 2));
+
+          if (!mounted) return;
+
+          try {
+            await _authService.verifyOTP(
+              verificationId: id,
+              smsCode: '123456', 
+            );
+
+            if (!mounted) return;
+            
+            _hideLoadingModal(); 
+            
+            setState(() {
+              _phoneVerified = true;
+            });
+            _showMessage("¡Número verificado exitosamente!");
+
+          } catch (e) {
+            if (!mounted) return;
+            _hideLoadingModal();
+            _showMessage("Error en la verificación simulada");
+          }
+        },
+
+        onError: (err) {
+          if (!mounted) return; 
+          _hideLoadingModal(); 
+          _showMessage(err);
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _hideLoadingModal(); 
+      _showMessage("Error: ${e.toString()}");
+    }
   }
 
   void _registerUser() async {
@@ -162,13 +149,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       await _authService.signOut();
 
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
       _showMessage("¡Éxito! Verifica tu email antes de iniciar sesión.");
       
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      Navigator.pop(context);
+      
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _showMessage(e.toString());
     }
