@@ -9,13 +9,46 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para obtener el texto de los campos
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  
   final AuthService _authService = AuthService();
 
-  // Variable para mostrar el estado de carga
-  bool _isLoading = false;
+  String? _verificationId; 
+  
+  bool _isPasswordVisible = false;
+  String _selectedCountryCode = '+52';
+  final List<String> _countryCodes = ['+52', '+1', '+34', '+54', '+56', '+57', '+58']; 
+
+  BuildContext? _loadingDialogContext;
+  BuildContext? _otpDialogContext;
+
+  void _showLoadingModal(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        _loadingDialogContext = ctx; 
+        return AlertDialog(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideLoadingModal() {
+    if (_loadingDialogContext != null) {
+      Navigator.pop(_loadingDialogContext!);
+      _loadingDialogContext = null;
+    }
+  }
 
   void _login() async {
     if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -25,19 +58,97 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    String fullPhoneNumber = "$_selectedCountryCode${_phoneController.text.trim()}";
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    _showLoadingModal("Verificando contraseña...");
+
     try {
       await _authService.signInWithPhoneAndPassword(
-        _phoneController.text.trim(),
+        fullPhoneNumber,
         _passwordController.text.trim(),
       );
-      // NOTA: No necesitamos navegar. El StreamBuilder en main.dart lo hará solo.
+
+      await _authService.signOut();
+
+      await Future.delayed(const Duration(seconds: 1));
+      _hideLoadingModal();
+      _showLoadingModal("Enviando SMS a $fullPhoneNumber...");
+
+      await _authService.sendPhoneVerification(
+        phoneNumber: fullPhoneNumber,
+        isLogin: true, 
+        onCodeSent: (id) {
+          _hideLoadingModal();
+          setState(() {
+            _verificationId = id;
+          });
+          _showOTPDialog(); 
+        },
+        onError: (err) async {
+          _hideLoadingModal();
+          scaffoldMessenger.showSnackBar(SnackBar(content: Text(err)));
+        },
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
-      setState(() => _isLoading = false);
+      _hideLoadingModal();
+      String errorText = e.toString().replaceAll('Exception: ', '');
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text(errorText)));
     }
+  }
+
+  void _showOTPDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, 
+      builder: (ctx) {
+        _otpDialogContext = ctx; 
+        return AlertDialog(
+          title: const Text("Código de Seguridad"),
+          content: TextField(
+            controller: _otpController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: "Ingresa los 6 dígitos del SMS"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (_otpDialogContext != null) Navigator.pop(_otpDialogContext!);
+                _otpController.clear();
+              },
+              child: const Text("Cancelar", style: TextStyle(color: Colors.red)),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Cerramos cuadro de texto
+                if (_otpDialogContext != null) Navigator.pop(_otpDialogContext!);
+                
+                _showLoadingModal("Verificando código...");
+                
+                try {
+                  await Future.delayed(const Duration(seconds: 1)); // Efecto UX
+
+                  await _authService.verifyOTP(
+                    verificationId: _verificationId!,
+                    smsCode: _otpController.text.trim(),
+                  );
+                  
+                  _hideLoadingModal();
+                  
+                } catch (e) {
+                  _hideLoadingModal();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString()))
+                  );
+                }
+              },
+              child: const Text("Verificar"),
+            ),
+          ],
+        );
+      }
+    );
   }
 
   @override
@@ -57,58 +168,69 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Campo de Teléfono
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Número de Teléfono (+52...)',
-                  prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: 'Número de Teléfono',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedCountryCode,
+                        items: _countryCodes.map((String code) {
+                          return DropdownMenuItem<String>(
+                            value: code,
+                            child: Text(code, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedCountryCode = newValue!;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Campo de Contraseña
               TextField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Botón de Inicio de Sesión
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator())
-              else ...[
-                // ElevatedButton(
-                //   onPressed: () => Navigator.pushNamed(context, '/home'),
-                //   style: ElevatedButton.styleFrom(
-                //     padding: const EdgeInsets.symmetric(vertical: 16),
-                //   ),
-                //   child: const Text(
-                //     'Iniciar Sesión',
-                //     style: TextStyle(fontSize: 18),
-                //   ),
-                // ),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _login,
-                    child: const Text('Iniciar Sesión'),
-                  ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _login,
+                  child: const Text('Iniciar Sesión'),
                 ),
-                const SizedBox(height: 8),
-                // BOTÓN DE REGISTRO
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/signup'),
-                  child: const Text('¿No tienes cuenta? Regístrate aquí'),
-                ),
-              ],
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/signup'),
+                child: const Text('¿No tienes cuenta? Regístrate aquí'),
+              ),
             ],
           ),
         ),

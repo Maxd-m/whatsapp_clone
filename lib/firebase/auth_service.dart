@@ -1,17 +1,31 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; //
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance; //
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // 1. Enviar el código SMS al teléfono
   Future<void> sendPhoneVerification({
     required String phoneNumber,
     required Function(String verificationId) onCodeSent,
     required Function(String error) onError,
+    bool isLogin = false, 
   }) async {
     try {
+      final query = await _db
+          .collection('users')
+          .where('phone', isEqualTo: phoneNumber)
+          .limit(1)
+          .get();
+
+      if (!isLogin && query.docs.isNotEmpty) {
+        throw Exception("YA EXISTE UNA CUENTA CON ESE NUMERO ASOCIADO");
+      }
+      if (isLogin && query.docs.isEmpty) {
+        throw Exception("No existe una cuenta vinculada a este número.");
+      }
+
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
@@ -50,7 +64,7 @@ class AuthService {
   Future<void> linkEmailAndSendVerification({
     required String email,
     required String password,
-    required String displayName, // Nuevo parámetro
+    required String displayName,
   }) async {
     User? user = _auth.currentUser;
 
@@ -61,26 +75,19 @@ class AuthService {
           password: password,
         );
 
-        // Vinculamos el correo a la cuenta telefónica
         await user.linkWithCredential(credential);
-
-        // Actualizamos el nombre en el perfil de Auth
         await user.updateDisplayName(displayName);
 
-        // CREAMOS EL DOCUMENTO EN FIRESTORE
-        // Usamos el UID generado por Auth como ID del documento
         await _db.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'displayName': displayName,
           'email': email,
           'phone': user.phoneNumber,
-          'photoUrl':
-              'https://i.pravatar.cc/150?u=${user.uid}', // Imagen por defecto
-          'contacts': [], // Lista de contactos inicial vacía
+          'photoUrl': 'https://i.pravatar.cc/150?u=${user.uid}',
+          'contacts': [],
           'createdAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
-        // Enviamos correo de verificación
         await user.sendEmailVerification();
       } on FirebaseAuthException catch (e) {
         throw Exception(e.message ?? "Error al registrar el correo.");
@@ -90,10 +97,8 @@ class AuthService {
     }
   }
 
-  // Nuevo método: Iniciar sesión con Teléfono y Contraseña
-  Future<void> signInWithPhoneAndPassword(String phone, String password) async {
+Future<void> signInWithPhoneAndPassword(String phone, String password) async {
     try {
-      // 1. Buscamos el documento del usuario que tenga ese número de teléfono
       final query = await _db
           .collection('users')
           .where('phone', isEqualTo: phone)
@@ -101,22 +106,29 @@ class AuthService {
           .get();
 
       if (query.docs.isEmpty) {
-        throw Exception("No existe una cuenta vinculada a este número.");
+        throw "No existe una cuenta vinculada a este número."; 
       }
 
-      // 2. Obtenemos el email de ese documento
       String email = query.docs.first.get('email');
+      
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email, 
+        password: password,
+      );
 
-      // 3. Iniciamos sesión con el email y contraseña
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      if (userCredential.user != null && !userCredential.user!.emailVerified) {
+        await _auth.signOut();
+        throw "Por favor, revisa tu bandeja de entrada y verifica tu correo antes de iniciar sesión.";
+      }
+
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? "Error al iniciar sesión.");
+      throw e.message ?? "Contraseña incorrecta o error al iniciar sesión.";
     } catch (e) {
-      throw Exception(e.toString());
+      throw e.toString();
     }
   }
 
-  // 4. Iniciar Sesión
+  // 5. Iniciar Sesión (Email normal, por si lo ocupas)
   Future<void> signIn(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
@@ -125,7 +137,7 @@ class AuthService {
     }
   }
 
-  // 4. Cerrar Sesión
+  // 6. Cerrar Sesión
   Future<void> signOut() async {
     await _auth.signOut();
   }
